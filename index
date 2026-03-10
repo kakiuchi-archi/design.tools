@@ -110,10 +110,7 @@
 <body>
 
 <header style="display:flex;align-items:center;gap:14px;">
-  <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="height:40px;width:auto;border-radius:6px;display:block;">
-  <rect width="40" height="40" rx="6" fill="#1a6fd4"/>
-  <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="13" font-family="sans-serif" font-weight="bold">垣内</text>
-</svg>
+  <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="height:40px;width:auto;border-radius:6px;display:block;"><rect width="40" height="40" rx="6" fill="#1a6fd4"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="13" font-family="sans-serif" font-weight="bold">垣内</text></svg>
   <div style="display:flex;align-items:baseline;gap:14px;">
     <h1>鋼材重量計算ツール</h1>
     <span style="font-size:12px;color:var(--text2);letter-spacing:0.04em;">Produced by 垣内建築設計</span>
@@ -877,7 +874,7 @@ function onCategoryChange(){
     sc.style.display='';
     sc.innerHTML=`<div style="color:var(--text2);font-size:13px;padding:4px 0;">このカテゴリは現在工事中です</div>`;
     currentUW=0; currentSpec=''; currentDims='';
-    document.getElementById('uwEditVal').value='';
+    /* uwEditVal removed */
     return;
   }
 
@@ -885,7 +882,7 @@ function onCategoryChange(){
     ss.style.display='none';
     sc.style.display='none';
     currentUW=0; currentSpec='その他'; currentDims='';
-    document.getElementById('uwEditVal').value='';
+    /* uwEditVal removed */
     return;
   }
 
