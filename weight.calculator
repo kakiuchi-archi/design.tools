@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<!--
+  鋼材重量計算ツール
+  Copyright (C) 垣内建築設計
+  All Rights Reserved.
+  
+  本ツールは垣内建築設計が管理・使用するものです。
+  無断複製・転載・配布を禁じます。
+-->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鋼材重量計算ツール</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
+  :root {
+    --bg:#f5f6f8; --surface:#ffffff; --surface2:#f0f1f4; --border:#d8dae0;
+    --accent:#1a6fd4; --accent2:#d4680a; --text:#1a1c24; --text2:#6b7080;
+    --success:#1a9e6e; --danger:#d43a3a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;min-height:100vh;}
+
+  header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.08);}
+  .hicon{width:34px;height:34px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;}
+  header h1{font-size:17px;font-weight:700;letter-spacing:.05em;}
+  header span{font-size:11px;color:var(--text2);margin-left:8px;}
+
+  .main{display:grid;grid-template-columns:360px 1fr;min-height:calc(100vh - 57px);}
+
+  .panel-left{background:var(--surface);border-right:1px solid var(--border);padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:18px;}
+  .sec-title{font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--text2);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+  .sec-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+  label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px;margin-top:12px;}
+  label:first-of-type{margin-top:0;}
+  select,input[type="text"],input[type="number"]{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 11px;font-size:13px;font-family:'Noto Sans JP',sans-serif;transition:border-color .2s;appearance:none;}
+  select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b7080' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;}
+  select:focus,input:focus{outline:none;border-color:var(--accent);}
+
+  .spec-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-top:6px;}
+  .spec-card .sname{font-size:14px;font-weight:700;color:var(--text);font-family:'DM Mono',monospace;}
+  .spec-card .sdims{font-size:11px;color:var(--text2);margin-top:3px;line-height:1.6;}
+  .spec-card .suw{font-size:22px;font-weight:600;color:var(--accent);font-family:'DM Mono',monospace;margin-top:8px;}
+  .spec-card .suw span{font-size:12px;color:var(--text2);font-weight:400;}
+
+  .manual-uw{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;margin-top:4px;}
+  .manual-uw input{flex:1;background:transparent;border:none;color:var(--accent);font-family:'DM Mono',monospace;font-size:18px;font-weight:600;padding:0;}
+  .manual-uw input:focus{outline:none;}
+  .manual-uw span{font-size:12px;color:var(--text2);}
+
+  .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:7px;border:none;font-size:13px;font-weight:600;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all .15s;letter-spacing:.02em;}
+  .btn-primary{background:var(--accent);color:#fff;width:100%;justify-content:center;}
+  .btn-primary:hover{background:#6da0f9;transform:translateY(-1px);}
+  .btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+  .btn-secondary:hover{background:var(--border);}
+  .btn-success{background:var(--success);color:#fff;}
+  .btn-success:hover{background:#6adbb5;}
+
+  .panel-right{padding:22px;display:flex;flex-direction:column;gap:18px;}
+  .top-bar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+  .proj-wrap{display:flex;align-items:center;gap:10px;flex:1;}
+  .proj-wrap label{margin:0;white-space:nowrap;font-size:13px;}
+  .proj-wrap input{max-width:300px;}
+
+  .tbl-wrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface);border-radius:10px;overflow:hidden;border:1px solid var(--border);}
+  th{background:var(--surface2);padding:9px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--text2);white-space:nowrap;}
+  td{padding:9px 12px;border-top:1px solid var(--border);font-size:13px;vertical-align:middle;}
+  tr:hover td{background:rgba(26,111,212,.05);}
+  td.num,th.num{text-align:right;font-family:'DM Mono',monospace;}
+
+  .editable{cursor:text;border-radius:4px;padding:2px 5px;transition:background .15s;min-width:30px;display:inline-block;}
+  .editable:hover{background:rgba(26,111,212,.10);}
+  .editable:focus{outline:2px solid var(--accent);background:#e8f0fb;border-radius:4px;}
+
+  .mtag{display:inline-block;background:rgba(79,142,247,.15);color:var(--accent);font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500;white-space:nowrap;}
+  .total-row td{background:var(--surface2);border-top:2px solid var(--accent);font-weight:700;}
+  .wt-val{color:var(--accent2);font-family:'DM Mono',monospace;font-weight:600;}
+  .total-weight{font-family:'DM Mono',monospace;font-size:18px;color:var(--accent2);}
+
+  .row-actions{display:flex;gap:4px;align-items:center;opacity:1;}
+  .bic{background:transparent;border:1px solid var(--border);color:var(--text2);cursor:pointer;border-radius:4px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .12px;padding:0;}
+  .bic:hover{background:var(--surface2);color:var(--text);}
+  .bic.cp:hover{border-color:var(--success);color:var(--success);background:rgba(79,209,160,.1);}
+  .bic.del:hover{border-color:var(--danger);color:var(--danger);background:rgba(247,108,108,.1);}
+
+  .empty-state{text-align:center;padding:60px;color:var(--text2);}
+  .empty-state .icon{font-size:44px;margin-bottom:12px;opacity:.4;}
+  .empty-state p{font-size:13px;}
+
+  .mode-tabs{display:flex;gap:0;margin-bottom:14px;border:1px solid var(--border);border-radius:7px;overflow:hidden;}
+  .mode-tab{flex:1;padding:8px 4px;font-size:12px;font-weight:600;font-family:'Noto Sans JP',sans-serif;background:transparent;border:none;color:var(--text2);cursor:pointer;transition:all .15s;letter-spacing:.02em;}
+  .mode-tab.active{background:var(--accent);color:#fff;}
+  .mode-tab:not(.active):hover{background:var(--surface2);color:var(--text);}
+
+  .other-card{background:var(--surface2);border:2px dashed var(--border);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:0;}
+  .other-card label{margin-top:10px;}
+  .other-card label:first-of-type{margin-top:0;}
+  .uw-display{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;margin-top:4px;display:flex;align-items:baseline;gap:6px;}
+  .uw-display .uw-num{font-family:'DM Mono',monospace;font-size:20px;font-weight:600;color:var(--accent);}
+  .uw-display .uw-unit{font-size:12px;color:var(--text2);}
+
+  @media(max-width:900px){.main{grid-template-columns:1fr;}.panel-left{border-right:none;border-bottom:1px solid var(--border);}}
+</style>
+</head>
+<body>
+
+<header style="display:flex;align-items:center;gap:14px;">
+  <img src="data:image/jpeg;base64,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Aj8OKK/cf/iGd+BH/Q2fFv8A8Gmn/wDyFR/xDO/Aj/obPi3/AODTT/8A5Co/4ijkX80v/AWH/EMs7/lj/wCBH4cUV+4//EM78CP+hs+Lf/g00/8A+QqP+IZ34Ef9DZ8W/wDwaaf/APIVH/EUci/ml/4Cw/4hlnf8sf8AwI/Diiv3H/4hnfgR/wBDZ8W//Bpp/wD8hUf8QzvwI/6Gz4t/+DTT/wD5Co/4ijkX80v/AAFh/wAQyzv+WP8A4EfhxRX7j/8AEM78CP8AobPi3/4NNP8A/kKj/iGd+BH/AENnxb/8Gmn/APyFR/xFHIv5pf8AgLD/AIhlnf8ALH/wI/Diiv3H/wCIZ34Ef9DZ8W//AAaaf/8AIVH/ABDO/Aj/AKGz4t/+DTT/AP5Co/4ijkX80v8AwFh/xDLO/wCWP/gR+HFFfuP/AMQzvwI/6Gz4t/8Ag00//wCQqP8AiGd+BH/Q2fFv/wAGmn//ACFR/wARRyL+aX/gLD/iGWd/yx/8CPw4or9x/wDiGd+BH/Q2fFv/AMGmn/8AyFR/xDO/Aj/obPi3/wCDTT//AJCo/wCIo5F/NL/wFh/xDLO/5Y/+BH4cUV+4/wDxDO/Aj/obPi3/AODTT/8A5Co/4hnfgR/0Nnxb/wDBpp//AMhUf8RRyL+aX/gLD/iGWd/yx/8AAj8OKK/cf/iGd+BH/Q2fFv8A8Gmn/wDyFR/xDO/Aj/obPi3/AODTT/8A5Co/4ijkX80v/AWH/EMs7/lj/wCBH4cUV+7+hf8ABuH+z3pFwj3F58Q9UVesd1rEKq318qBD+RFez/CH/gkP+zl8FLlLjSvhboF/doQ3n60ZdXO4dGC3LSIpH+yorkxPizlEI/uoTm/RJfe3+jOvDeFebTl+9nCK9W39yX6n4Ffs6/sWfFP9q/V4rXwD4J13XopJPLe+S3MWnwHv5ly+Ik+hbJxwCa/Ur9hv/g3N8O/D27tfEHxq1S28XalFtkj8P6czppkLdf30p2yT44+UBE4IO8Gv0307TbfR7CG1tIIbW1t0EcUMKBI4lHAVVHAA9BU1fnme+J2Z46LpYVexg+zvL/wLS3ySfmff5J4a5bgpKriX7aa7q0f/AAHW/wA215FTQNAsPCmiWmmaXZWmnadYRLBbWtrEsMNvGowqIigBVAAAAGBVuiivzdtt3Z+iJJKyCiiikMKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooA//2Q==" alt="垣内建築設計ロゴ" style="height:57px;width:auto;border-radius:6px;display:block;">
+  <div style="display:flex;align-items:baseline;gap:14px;">
+    <h1>鋼材重量計算ツール</h1>
+    <span style="font-size:12px;color:var(--text2);letter-spacing:0.04em;">Produced by 垣内建築設計</span>
+  </div>
+</header>
+
+<div class="main">
+<div class="panel-left">
+
+  <!-- ① 部位名称 -->
+  <div>
+    <div class="sec-title">入力</div>
+
+    <label>部位名称 <span style="color:var(--text2);font-size:10px;font-weight:400;">（任意）</span></label>
+    <input type="text" id="inPart" placeholder="" />
+  </div>
+
+  <!-- ② 素材・材種カテゴリ・規格サイズ（タブ切り替え） -->
+  <div>
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tab-spec" onclick="switchMode('spec')">規格表から選択</button>
+      <button class="mode-tab" id="tab-other" onclick="switchMode('other')">その他<br><span style="font-size:10px;font-weight:400;">（単位重量を手入力）</span></button>
+    </div>
+
+    <!-- 規格表モード -->
+    <div id="mode-spec">
+      <label>素材</label>
+      <select id="selMaterial" onchange="onMaterialChange()">
+        <option value="steel">スチール</option>
+        <option value="stainless">ステンレス</option>
+        <option value="aluminum">アルミ</option>
+      </select>
+
+      <label>材種カテゴリ</label>
+      <select id="selCategory" onchange="onCategoryChange()"></select>
+
+      <label>規格サイズ</label>
+      <select id="selSpec" onchange="onSpecChange()"></select>
+      <div id="specCard" class="spec-card" style="display:none;"></div>
+    </div>
+
+    <!-- その他モード -->
+    <div id="mode-other" style="display:none;">
+      <div class="other-card">
+        <label>形状・規格名称 <span style="color:var(--text2);font-size:10px;font-weight:400;">（任意）</span></label>
+        <input type="text" id="otherName" placeholder="" oninput="onOtherChange()" />
+
+        <label>単位重量 (kg/m)</label>
+        <input type="number" id="otherUW" placeholder="" step="0.001" min="0" oninput="onOtherChange()"
+          style="font-family:'DM Mono',monospace;font-size:15px;color:var(--accent);" />
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 重量プレビュー（常時表示） -->
+  <div>
+    <label>重量プレビュー</label>
+    <div class="uw-display" id="specPreview">
+      <span class="uw-num" id="specPreviewVal">—</span>
+      <span class="uw-unit" id="specPreviewUnit"> kg</span>
+    </div>
+  </div>
+
+  <!-- ④ 長さ・⑤ 数量・⑥ 備考 -->
+  <div>
+    <label>長さ (mm)</label>
+    <input type="number" id="inLength" placeholder="" step="1" min="0" oninput="updatePreview()" />
+
+    <label>数量</label>
+    <input type="number" id="inQty" placeholder="" step="1" min="1" value="1" oninput="updatePreview()" />
+
+    <label>備考 <span style="color:var(--text2);font-size:10px;font-weight:400;">（任意）</span></label>
+    <input type="text" id="inNote" placeholder="" />
+
+    <button class="btn btn-primary" style="margin-top:14px;" onclick="addItem()">＋ リストに追加</button>
+  </div>
+</div>
+
+<div class="panel-right">
+  <div class="top-bar">
+    <div class="proj-wrap">
+      <label>工事名：</label>
+      <input type="text" id="projectName" placeholder="" />
+      <label style="margin-left:8px;">製品名：</label>
+      <input type="text" id="productName" placeholder="" />
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-secondary" onclick="clearAll()">全削除</button>
+      <button class="btn btn-success" onclick="exportExcel()">EXCELに出力</button>
+    </div>
+  </div>
+  <div id="tableWrap"></div>
+</div>
+</div>
+
+<script>
+// ===== データベース =====
+const DB = {
+  // ===== スチール =====
+  HW:{label:'H形鋼（広幅）',data:[
+    {name:'H 100×100×6×8',   uw:16.9},
+    {name:'H 125×125×6.5×9', uw:23.6},
+    {name:'H 150×150×7×10',  uw:31.1},
+    {name:'H 175×175×7.5×11',uw:40.4},
+    {name:'H 200×200×8×12',  uw:49.9},
+    {name:'H 250×250×9×14',  uw:71.8},
+    {name:'H 300×300×10×15', uw:93},
+    {name:'H 350×350×12×19', uw:135},
+    {name:'H 400×400×13×21', uw:172},
+    {name:'H 414×405×18×28', uw:232},
+    {name:'H 428×407×20×35', uw:283},
+    {name:'H 458×417×30×50', uw:415},
+  ]},
+  HM:{label:'H形鋼（中幅）',data:[
+    {name:'H 148×100×6×9',   uw:20.7},
+    {name:'H 194×150×6×9',   uw:29.9},
+    {name:'H 244×175×7×11',  uw:43.6},
+    {name:'H 294×200×8×12',  uw:55.8},
+    {name:'H 340×250×9×14',  uw:78.1},
+    {name:'H 390×300×10×16', uw:105},
+    {name:'H 440×300×11×18', uw:121},
+    {name:'H 482×300×11×15', uw:111},
+    {name:'H 488×300×11×18', uw:125},
+    {name:'H 582×300×12×17', uw:133},
+    {name:'H 588×300×12×20', uw:147},
+    {name:'H 594×302×14×23', uw:170},
+    {name:'H 692×300×13×20', uw:163},
+    {name:'H 700×300×13×24', uw:182},
+    {name:'H 792×300×14×22', uw:188},
+    {name:'H 800×300×14×26', uw:207},
+    {name:'H 890×299×15×23', uw:210},
+    {name:'H 900×300×16×28', uw:240},
+    {name:'H 912×302×18×34', uw:283},
+    {name:'H 918×303×19×37', uw:304},
+  ]},
+  HN:{label:'H形鋼（細幅）',data:[
+    {name:'H 100×50×5×7',    uw:9.3},
+    {name:'H 125×60×6×8',    uw:13.1},
+    {name:'H 150×75×5×7',    uw:14},
+    {name:'H 175×90×5×8',    uw:18},
+    {name:'H 198×99×4.5×7',  uw:17.8},
+    {name:'H 200×100×5.5×8', uw:20.9},
+    {name:'H 248×124×5×8',   uw:25.1},
+    {name:'H 250×125×6×9',   uw:29},
+    {name:'H 298×149×5.5×8', uw:32},
+    {name:'H 300×150×6.5×9', uw:36.7},
+    {name:'H 346×174×6×9',   uw:41.2},
+    {name:'H 350×175×7×11',  uw:49.4},
+    {name:'H 396×199×7×11',  uw:56.1},
+    {name:'H 400×200×8×13',  uw:65.4},
+    {name:'H 446×199×8×12',  uw:65.1},
+    {name:'H 450×200×9×14',  uw:74.9},
+    {name:'H 496×199×9×14',  uw:77.9},
+    {name:'H 500×200×10×16', uw:88.2},
+    {name:'H 596×199×10×15', uw:92.5},
+    {name:'H 600×200×11×17', uw:103},
+  ]},
+  C:{label:'溝形鋼（[-形鋼）',data:[
+    {name:'[ 75×40×5×7',     uw:6.92},
+    {name:'[ 100×50×5×7.5',  uw:9.36},
+    {name:'[ 125×65×6×8',    uw:13.4},
+    {name:'[ 150×75×6.5×10', uw:18.6},
+    {name:'[ 150×75×9×12.5', uw:24.0},
+    {name:'[ 180×75×7×10.5', uw:21.4},
+    {name:'[ 200×80×7.5×11', uw:24.6},
+    {name:'[ 200×90×8×13.5', uw:30.3},
+    {name:'[ 250×90×9×13',   uw:34.6},
+    {name:'[ 250×90×11×14.5',uw:40.2},
+    {name:'[ 300×90×9×13',   uw:38.1},
+    {name:'[ 300×90×10×15.5',uw:43.8},
+    {name:'[ 300×90×12×16',  uw:48.6},
+    {name:'[ 380×100×10.5×16',uw:54.5},
+    {name:'[ 380×100×13×20', uw:67.3},
+  ]},
+  // 等辺山形鋼 (t-kizai.co.jp より 100×100×13まで)
+  L:{label:'等辺山形鋼（L形鋼）',data:[
+    {name:'L-30×30×3',    dims:'A=30  t=3',  uw:1.36},
+    {name:'L-40×40×3',    dims:'A=40  t=3',  uw:1.83},
+    {name:'L-40×40×5',    dims:'A=40  t=5',  uw:2.95},
+    {name:'L-50×50×4',    dims:'A=50  t=4',  uw:3.06},
+    {name:'L-50×50×6',    dims:'A=50  t=6',  uw:4.43},
+    {name:'L-65×65×6',    dims:'A=65  t=6',  uw:5.91},
+    {name:'L-65×65×8',    dims:'A=65  t=8',  uw:7.66},
+    {name:'L-75×75×6',    dims:'A=75  t=6',  uw:6.85},
+    {name:'L-75×75×9',    dims:'A=75  t=9',  uw:9.96},
+    {name:'L-75×75×12',   dims:'A=75  t=12', uw:13.0},
+    {name:'L-90×90×7',    dims:'A=90  t=7',  uw:9.59},
+    {name:'L-90×90×10',   dims:'A=90  t=10', uw:13.3},
+    {name:'L-90×90×13',   dims:'A=90  t=13', uw:17.0},
+    {name:'L-100×100×7',  dims:'A=100 t=7',  uw:10.7},
+    {name:'L-100×100×10', dims:'A=100 t=10', uw:14.9},
+    {name:'L-100×100×13', dims:'A=100 t=13', uw:19.1},
+  ]},
+  // リップ溝形鋼（C形鋼）meiwakogyo.jp より、大きいサイズ順
+  LC:{label:'リップ溝形鋼（C形鋼）',data:[
+    {name:'C-60×30×10×1.6',  dims:'H=60  A=30 C=10 t=1.6', uw:1.63},
+    {name:'C-60×30×10×2.3',  dims:'H=60  A=30 C=10 t=2.3', uw:2.25},
+    {name:'C-75×45×15×1.6',  dims:'H=75  A=45 C=15 t=1.6', uw:2.32},
+    {name:'C-75×45×15×2.3',  dims:'H=75  A=45 C=15 t=2.3', uw:3.25},
+    {name:'C-100×50×20×1.6', dims:'H=100 A=50 C=20 t=1.6', uw:2.88},
+    {name:'C-100×50×20×2.3', dims:'H=100 A=50 C=20 t=2.3', uw:4.06},
+    {name:'C-100×50×20×3.2', dims:'H=100 A=50 C=20 t=3.2', uw:5.50},
+    {name:'C-125×50×20×1.6', dims:'H=125 A=50 C=20 t=1.6', uw:3.20},
+    {name:'C-125×50×20×2.3', dims:'H=125 A=50 C=20 t=2.3', uw:4.51},
+    {name:'C-125×50×20×3.2', dims:'H=125 A=50 C=20 t=3.2', uw:6.13},
+  ]},
+  L2:{label:'不等辺山形鋼',data:[
+    {name:'L-50×30×4',    dims:'A=50  B=30  t=4',  uw:2.45},
+    {name:'L-65×50×5',    dims:'A=65  B=50  t=5',  uw:4.38},
+    {name:'L-75×50×6',    dims:'A=75  B=50  t=6',  uw:5.62},
+    {name:'L-75×65×7',    dims:'A=75  B=65  t=7',  uw:7.45},
+    {name:'L-90×75×9',    dims:'A=90  B=75  t=9',  uw:11.5},
+    {name:'L-100×65×7',   dims:'A=100 B=65  t=7',  uw:8.78},
+    {name:'L-100×75×7',   dims:'A=100 B=75  t=7',  uw:9.38},
+    {name:'L-100×75×10',  dims:'A=100 B=75  t=10', uw:13.1},
+    {name:'L-125×75×7',   dims:'A=125 B=75  t=7',  uw:10.8},
+    {name:'L-125×75×10',  dims:'A=125 B=75  t=10', uw:15.2},
+    {name:'L-150×90×9',   dims:'A=150 B=90  t=9',  uw:16.6},
+    {name:'L-150×100×10', dims:'A=150 B=100 t=10', uw:19.1},
+    {name:'L-200×100×12', dims:'A=200 B=100 t=12', uw:27.8},
+  ]},
+  // 平鋼 FB (kouzai-net.com より、指定除外サイズを省く)
+  PL:{label:'平鋼（FB）',data:[
+    // 3t
+    {name:'FB-3×16',  dims:'t=3   B=16',  uw:0.377},
+    {name:'FB-3×19',  dims:'t=3   B=19',  uw:0.447},
+    {name:'FB-3×25',  dims:'t=3   B=25',  uw:0.589},
+    {name:'FB-3×32',  dims:'t=3   B=32',  uw:0.754},
+    {name:'FB-3×38',  dims:'t=3   B=38',  uw:0.895},
+    {name:'FB-3×50',  dims:'t=3   B=50',  uw:1.18},
+    // 4.5t
+    {name:'FB-4.5×16',  dims:'t=4.5  B=16',  uw:0.565},
+    {name:'FB-4.5×19',  dims:'t=4.5  B=19',  uw:0.671},
+    {name:'FB-4.5×25',  dims:'t=4.5  B=25',  uw:0.883},
+    {name:'FB-4.5×32',  dims:'t=4.5  B=32',  uw:1.13},
+    {name:'FB-4.5×38',  dims:'t=4.5  B=38',  uw:1.34},
+    {name:'FB-4.5×44',  dims:'t=4.5  B=44',  uw:1.55},
+    {name:'FB-4.5×50',  dims:'t=4.5  B=50',  uw:1.77},
+    {name:'FB-4.5×100', dims:'t=4.5  B=100', uw:3.53},
+    {name:'FB-4.5×125', dims:'t=4.5  B=125', uw:4.42},
+    {name:'FB-4.5×150', dims:'t=4.5  B=150', uw:5.30},
+    {name:'FB-4.5×200', dims:'t=4.5  B=200', uw:7.06},
+    // 6t
+    {name:'FB-6×16',  dims:'t=6   B=16',  uw:0.754},
+    {name:'FB-6×19',  dims:'t=6   B=19',  uw:0.895},
+    {name:'FB-6×25',  dims:'t=6   B=25',  uw:1.18},
+    {name:'FB-6×32',  dims:'t=6   B=32',  uw:1.51},
+    {name:'FB-6×38',  dims:'t=6   B=38',  uw:1.79},
+    {name:'FB-6×44',  dims:'t=6   B=44',  uw:2.07},
+    {name:'FB-6×50',  dims:'t=6   B=50',  uw:2.36},
+    {name:'FB-6×65',  dims:'t=6   B=65',  uw:3.06},
+    {name:'FB-6×75',  dims:'t=6   B=75',  uw:3.53},
+    {name:'FB-6×90',  dims:'t=6   B=90',  uw:4.24},
+    {name:'FB-6×100', dims:'t=6   B=100', uw:4.71},
+    {name:'FB-6×125', dims:'t=6   B=125', uw:5.89},
+    {name:'FB-6×150', dims:'t=6   B=150', uw:7.06},
+    {name:'FB-6×200', dims:'t=6   B=200', uw:9.42},
+    {name:'FB-6×250', dims:'t=6   B=250', uw:11.8},
+    {name:'FB-6×300', dims:'t=6   B=300', uw:14.1},
+    // 9t
+    {name:'FB-9×19',  dims:'t=9   B=19',  uw:1.34},
+    {name:'FB-9×25',  dims:'t=9   B=25',  uw:1.77},
+    {name:'FB-9×32',  dims:'t=9   B=32',  uw:2.26},
+    {name:'FB-9×38',  dims:'t=9   B=38',  uw:2.68},
+    {name:'FB-9×44',  dims:'t=9   B=44',  uw:3.11},
+    {name:'FB-9×50',  dims:'t=9   B=50',  uw:3.53},
+    {name:'FB-9×65',  dims:'t=9   B=65',  uw:4.59},
+    {name:'FB-9×75',  dims:'t=9   B=75',  uw:5.30},
+    {name:'FB-9×90',  dims:'t=9   B=90',  uw:6.36},
+    {name:'FB-9×100', dims:'t=9   B=100', uw:7.06},
+    {name:'FB-9×125', dims:'t=9   B=125', uw:8.83},
+    {name:'FB-9×150', dims:'t=9   B=150', uw:10.6},
+    {name:'FB-9×200', dims:'t=9   B=200', uw:14.1},
+    {name:'FB-9×250', dims:'t=9   B=250', uw:17.7},
+    {name:'FB-9×300', dims:'t=9   B=300', uw:21.2},
+    // 12t
+    {name:'FB-12×32',  dims:'t=12  B=32',  uw:3.01},
+    {name:'FB-12×38',  dims:'t=12  B=38',  uw:3.58},
+    {name:'FB-12×44',  dims:'t=12  B=44',  uw:4.14},
+    {name:'FB-12×50',  dims:'t=12  B=50',  uw:4.71},
+    {name:'FB-12×65',  dims:'t=12  B=65',  uw:6.12},
+    {name:'FB-12×75',  dims:'t=12  B=75',  uw:7.06},
+    {name:'FB-12×90',  dims:'t=12  B=90',  uw:8.48},
+    {name:'FB-12×100', dims:'t=12  B=100', uw:9.42},
+    {name:'FB-12×125', dims:'t=12  B=125', uw:11.8},
+    {name:'FB-12×150', dims:'t=12  B=150', uw:14.1},
+    {name:'FB-12×200', dims:'t=12  B=200', uw:18.8},
+    {name:'FB-12×230', dims:'t=12  B=230', uw:21.7},
+    {name:'FB-12×250', dims:'t=12  B=250', uw:23.6},
+    {name:'FB-12×300', dims:'t=12  B=300', uw:28.3},
+    // 16t
+    {name:'FB-16×32',  dims:'t=16  B=32',  uw:4.02},
+    {name:'FB-16×38',  dims:'t=16  B=38',  uw:4.77},
+    {name:'FB-16×44',  dims:'t=16  B=44',  uw:5.53},
+    {name:'FB-16×50',  dims:'t=16  B=50',  uw:6.28},
+    {name:'FB-16×65',  dims:'t=16  B=65',  uw:8.16},
+    {name:'FB-16×75',  dims:'t=16  B=75',  uw:9.42},
+    {name:'FB-16×90',  dims:'t=16  B=90',  uw:11.3},
+    {name:'FB-16×100', dims:'t=16  B=100', uw:12.6},
+    {name:'FB-16×125', dims:'t=16  B=125', uw:15.7},
+    {name:'FB-16×150', dims:'t=16  B=150', uw:18.8},
+    {name:'FB-16×200', dims:'t=16  B=200', uw:25.1},
+    {name:'FB-16×250', dims:'t=16  B=250', uw:31.4},
+    {name:'FB-16×300', dims:'t=16  B=300', uw:37.7},
+    // 19t
+    {name:'FB-19×32',  dims:'t=19  B=32',  uw:4.77},
+    {name:'FB-19×38',  dims:'t=19  B=38',  uw:5.67},
+    {name:'FB-19×44',  dims:'t=19  B=44',  uw:6.56},
+    {name:'FB-19×50',  dims:'t=19  B=50',  uw:7.46},
+    {name:'FB-19×65',  dims:'t=19  B=65',  uw:9.69},
+    {name:'FB-19×75',  dims:'t=19  B=75',  uw:11.2},
+    {name:'FB-19×90',  dims:'t=19  B=90',  uw:13.4},
+    {name:'FB-19×100', dims:'t=19  B=100', uw:14.9},
+    {name:'FB-19×125', dims:'t=19  B=125', uw:18.6},
+    {name:'FB-19×150', dims:'t=19  B=150', uw:22.4},
+    {name:'FB-19×200', dims:'t=19  B=200', uw:29.8},
+    {name:'FB-19×250', dims:'t=19  B=250', uw:37.3},
+    {name:'FB-19×300', dims:'t=19  B=300', uw:44.7},
+  ]},
+  // 角鋼管 STKMR 正方形 (kouzai-net.com stkr.html より)
+  STKMR_SQ:{label:'角鋼管 STKMR（小角径鋼管・正方形）',data:[
+    {name:'□-8×8×1.0',    dims:'D=8   t=1.0', uw:0.289},
+    {name:'□-13×13×1.2',  dims:'D=13  t=1.2', uw:0.530},
+    {name:'□-16×16×1.2',  dims:'D=16  t=1.2', uw:0.621},
+    {name:'□-16×16×1.6',  dims:'D=16  t=1.6', uw:0.813},
+    {name:'□-19×19×1.2',  dims:'D=19  t=1.2', uw:0.716},
+    {name:'□-19×19×1.6',  dims:'D=19  t=1.6', uw:0.939},
+    {name:'□-20×20×2.3',  dims:'D=20  t=2.3', uw:1.31},
+    {name:'□-21×21×1.6',  dims:'D=21  t=1.6', uw:1.06},
+    {name:'□-22×22×1.2',  dims:'D=22  t=1.2', uw:0.811},
+    {name:'□-25×25×1.2',  dims:'D=25  t=1.2', uw:0.906},
+    {name:'□-25×25×1.6',  dims:'D=25  t=1.6', uw:1.28},
+    {name:'□-25×25×2.3',  dims:'D=25  t=2.3', uw:1.56},
+    {name:'□-28×28×1.6',  dims:'D=28  t=1.6', uw:1.44},
+    {name:'□-30×30×2.3',  dims:'D=30  t=2.3', uw:2.03},
+    {name:'□-30×30×3.2',  dims:'D=30  t=3.2', uw:2.65},
+    {name:'□-31×31×1.6',  dims:'D=31  t=1.6', uw:1.44},
+    {name:'□-32×32×1.6',  dims:'D=32  t=1.6', uw:1.62},
+    {name:'□-35×35×3.2',  dims:'D=35  t=3.2', uw:3.30},
+    {name:'□-38×38×1.6',  dims:'D=38  t=1.6', uw:1.94},
+    {name:'□-40×40×1.6',  dims:'D=40  t=1.6', uw:1.94},
+    {name:'□-40×40×2.0',  dims:'D=40  t=2.0', uw:2.41},
+    {name:'□-40×40×2.3',  dims:'D=40  t=2.3', uw:2.62},
+    {name:'□-40×40×3.2',  dims:'D=40  t=3.2', uw:3.76},
+    {name:'□-40×40×4.5',  dims:'D=40  t=4.5', uw:4.89},
+    {name:'□-45×45×1.6',  dims:'D=45  t=1.6', uw:2.33},
+    {name:'□-45×45×2.3',  dims:'D=45  t=2.3', uw:3.10},
+    {name:'□-45×45×3.2',  dims:'D=45  t=3.2', uw:4.25},
+  ]},
+  // 角鋼管 STKMR 長方形 (kouzai-net.com stkr.html より)
+  STKMR_REC:{label:'角鋼管 STKMR（小角径鋼管・長方形）',data:[
+    {name:'□-19×10×1.2',  dims:'H=19  B=10  t=1.2', uw:0.530},
+    {name:'□-22×10×1.2',  dims:'H=22  B=10  t=1.2', uw:0.621},
+    {name:'□-25×12×1.2',  dims:'H=25  B=12  t=1.2', uw:0.761},
+    {name:'□-25×12×1.6',  dims:'H=25  B=12  t=1.6', uw:0.939},
+    {name:'□-30×16×1.6',  dims:'H=30  B=16  t=1.6', uw:1.19},
+    {name:'□-30×20×1.2',  dims:'H=30  B=20  t=1.2', uw:0.906},
+    {name:'□-30×20×1.6',  dims:'H=30  B=20  t=1.6', uw:1.19},
+    {name:'□-30×20×2.3',  dims:'H=30  B=20  t=2.3', uw:1.56},
+    {name:'□-32×14×1.6',  dims:'H=32  B=14  t=1.6', uw:1.06},
+    {name:'□-32×16×1.6',  dims:'H=32  B=16  t=1.6', uw:1.19},
+    {name:'□-40×16×1.6',  dims:'H=40  B=16  t=1.6', uw:1.44},
+    {name:'□-40×20×1.2',  dims:'H=40  B=20  t=1.2', uw:1.09},
+    {name:'□-40×20×1.6',  dims:'H=40  B=20  t=1.6', uw:1.44},
+    {name:'□-40×20×2.3',  dims:'H=40  B=20  t=2.3', uw:2.03},
+    {name:'□-40×20×3.2',  dims:'H=40  B=20  t=3.2', uw:2.65},
+    {name:'□-40×25×1.2',  dims:'H=40  B=25  t=1.2', uw:1.23},
+    {name:'□-40×25×1.6',  dims:'H=40  B=25  t=1.6', uw:1.62},
+    {name:'□-50×20×1.6',  dims:'H=50  B=20  t=1.6', uw:1.63},
+    {name:'□-50×20×2.3',  dims:'H=50  B=20  t=2.3', uw:2.25},
+    {name:'□-50×25×1.6',  dims:'H=50  B=25  t=1.6', uw:1.94},
+    {name:'□-50×30×1.6',  dims:'H=50  B=30  t=1.6', uw:1.94},
+    {name:'□-50×30×2.3',  dims:'H=50  B=30  t=2.3', uw:2.75},
+    {name:'□-50×30×3.2',  dims:'H=50  B=30  t=3.2', uw:3.76},
+    {name:'□-60×30×1.6',  dims:'H=60  B=30  t=1.6', uw:2.32},
+    {name:'□-60×30×2.3',  dims:'H=60  B=30  t=2.3', uw:2.98},
+    {name:'□-60×30×3.2',  dims:'H=60  B=30  t=3.2', uw:3.99},
+    {name:'□-70×25×1.6',  dims:'H=70  B=25  t=1.6', uw:2.44},
+    {name:'□-70×30×1.6',  dims:'H=70  B=30  t=1.6', uw:2.44},
+    {name:'□-75×20×1.6',  dims:'H=75  B=20  t=1.6', uw:2.32},
+    {name:'□-75×20×2.3',  dims:'H=75  B=20  t=2.3', uw:3.30},
+    {name:'□-75×25×1.6',  dims:'H=75  B=25  t=1.6', uw:2.44},
+    {name:'□-75×45×2.3',  dims:'H=75  B=45  t=2.3', uw:4.06},
+    {name:'□-75×45×3.2',  dims:'H=75  B=45  t=3.2', uw:5.50},
+    {name:'□-80×40×1.6',  dims:'H=80  B=40  t=1.6', uw:2.95},
+    {name:'□-80×40×2.3',  dims:'H=80  B=40  t=2.3', uw:4.20},
+    {name:'□-80×40×3.2',  dims:'H=80  B=40  t=3.2', uw:5.77},
+    {name:'□-90×30×1.6',  dims:'H=90  B=30  t=1.6', uw:2.95},
+    {name:'□-90×30×2.3',  dims:'H=90  B=30  t=2.3', uw:4.20},
+    {name:'□-90×30×3.2',  dims:'H=90  B=30  t=3.2', uw:5.77},
+    {name:'□-90×45×2.3',  dims:'H=90  B=45  t=2.3', uw:4.86},
+    {name:'□-90×45×3.2',  dims:'H=90  B=45  t=3.2', uw:6.68},
+  ]},
+  // 角鋼管 STKR 正方形 (kouzai-net.com stkr.html より)
+  STKR_SQ:{label:'角鋼管 STKR（角径鋼管・正方形）',data:[
+    {name:'□-50×50×1.6',   dims:'D=50  t=1.6', uw:2.38},
+    {name:'□-50×50×2.3',   dims:'D=50  t=2.3', uw:3.34},
+    {name:'□-50×50×3.2',   dims:'D=50  t=3.2', uw:4.50},
+    {name:'□-50×50×4.5',   dims:'D=50  t=4.5', uw:6.02},
+    {name:'□-60×60×1.6',   dims:'D=60  t=1.6', uw:2.88},
+    {name:'□-60×60×2.3',   dims:'D=60  t=2.3', uw:4.06},
+    {name:'□-60×60×3.2',   dims:'D=60  t=3.2', uw:5.50},
+    {name:'□-60×60×4.5',   dims:'D=60  t=4.5', uw:7.97},
+    {name:'□-65×65×3.2',   dims:'D=65  t=3.2', uw:5.77},
+    {name:'□-75×75×1.6',   dims:'D=75  t=1.6', uw:3.64},
+    {name:'□-75×75×2.3',   dims:'D=75  t=2.3', uw:5.14},
+    {name:'□-75×75×3.2',   dims:'D=75  t=3.2', uw:7.01},
+    {name:'□-75×75×4.5',   dims:'D=75  t=4.5', uw:9.55},
+    {name:'□-80×80×2.3',   dims:'D=80  t=2.3', uw:5.50},
+    {name:'□-80×80×3.2',   dims:'D=80  t=3.2', uw:7.51},
+    {name:'□-90×90×2.3',   dims:'D=90  t=2.3', uw:6.23},
+    {name:'□-90×90×3.2',   dims:'D=90  t=3.2', uw:8.51},
+    {name:'□-90×90×4.5',   dims:'D=90  t=4.5', uw:12.2},
+    {name:'□-100×100×2.3', dims:'D=100 t=2.3', uw:6.95},
+    {name:'□-100×100×3.2', dims:'D=100 t=3.2', uw:9.52},
+    {name:'□-100×100×4.5', dims:'D=100 t=4.5', uw:13.1},
+    {name:'□-125×125×3.2', dims:'D=125 t=3.2', uw:12.0},
+    {name:'□-125×125×4.5', dims:'D=125 t=4.5', uw:16.6},
+  ]},
+  // 角鋼管 STKR 長方形 (kouzai-net.com stkr.html より)
+  STKR_REC:{label:'角鋼管 STKR（角径鋼管・長方形）',data:[
+    {name:'□-60×30×1.6',   dims:'H=60  B=30  t=1.6', uw:2.13},
+    {name:'□-60×30×2.3',   dims:'H=60  B=30  t=2.3', uw:2.98},
+    {name:'□-60×30×3.2',   dims:'H=60  B=30  t=3.2', uw:3.99},
+    {name:'□-60×40×1.6',   dims:'H=60  B=40  t=1.6', uw:2.44},
+    {name:'□-60×40×2.3',   dims:'H=60  B=40  t=2.3', uw:3.34},
+    {name:'□-60×40×3.2',   dims:'H=60  B=40  t=3.2', uw:4.76},
+    {name:'□-75×45×1.6',   dims:'H=75  B=45  t=1.6', uw:2.88},
+    {name:'□-75×45×2.3',   dims:'H=75  B=45  t=2.3', uw:4.06},
+    {name:'□-75×45×3.2',   dims:'H=75  B=45  t=3.2', uw:5.50},
+    {name:'□-100×20×1.6',  dims:'H=100 B=20  t=1.6', uw:2.90},
+    {name:'□-100×20×2.3',  dims:'H=100 B=20  t=2.3', uw:4.20},
+    {name:'□-100×40×1.6',  dims:'H=100 B=40  t=1.6', uw:3.38},
+    {name:'□-100×40×2.3',  dims:'H=100 B=40  t=2.3', uw:4.78},
+    {name:'□-100×40×3.2',  dims:'H=100 B=40  t=3.2', uw:6.78},
+    {name:'□-100×50×1.6',  dims:'H=100 B=50  t=1.6', uw:3.64},
+    {name:'□-100×50×2.3',  dims:'H=100 B=50  t=2.3', uw:5.14},
+    {name:'□-100×50×3.2',  dims:'H=100 B=50  t=3.2', uw:7.01},
+    {name:'□-100×50×4.5',  dims:'H=100 B=50  t=4.5', uw:9.55},
+    {name:'□-100×80×4.5',  dims:'H=100 B=80  t=4.5', uw:12.2},
+    {name:'□-125×75×2.3',  dims:'H=125 B=75  t=2.3', uw:6.95},
+    {name:'□-125×75×3.2',  dims:'H=125 B=75  t=3.2', uw:9.52},
+    {name:'□-125×75×4.5',  dims:'H=125 B=75  t=4.5', uw:13.1},
+    {name:'□-150×50×2.3',  dims:'H=150 B=50  t=2.3', uw:6.95},
+    {name:'□-150×50×3.2',  dims:'H=150 B=50  t=3.2', uw:9.52},
+  ]},
+  // 丸鋼管 SGP (kouzai-net.com sgpsaizuhyou.html より)
+  SGP:{label:'丸鋼管 SGP（配管用炭素鋼鋼管）',data:[
+    {name:'SGP 6A  φ10.5×2.0',   dims:'D=10.5  t=2.0',  uw:0.419},
+    {name:'SGP 8A  φ13.8×2.3',   dims:'D=13.8  t=2.3',  uw:0.652},
+    {name:'SGP 10A φ17.3×2.3',   dims:'D=17.3  t=2.3',  uw:0.851},
+    {name:'SGP 15A φ21.7×2.8',   dims:'D=21.7  t=2.8',  uw:1.31},
+    {name:'SGP 20A φ27.2×2.8',   dims:'D=27.2  t=2.8',  uw:1.68},
+    {name:'SGP 25A φ34.0×3.2',   dims:'D=34.0  t=3.2',  uw:2.43},
+    {name:'SGP 32A φ42.7×3.5',   dims:'D=42.7  t=3.5',  uw:3.38},
+    {name:'SGP 40A φ48.6×3.5',   dims:'D=48.6  t=3.5',  uw:3.89},
+    {name:'SGP 50A φ60.5×3.8',   dims:'D=60.5  t=3.8',  uw:5.31},
+    {name:'SGP 65A φ76.3×4.2',   dims:'D=76.3  t=4.2',  uw:7.47},
+    {name:'SGP 80A φ89.1×4.2',   dims:'D=89.1  t=4.2',  uw:8.79},
+    {name:'SGP 90A φ101.6×4.2',  dims:'D=101.6 t=4.2',  uw:10.1},
+    {name:'SGP 100A φ114.3×4.5', dims:'D=114.3 t=4.5',  uw:12.2},
+    {name:'SGP 125A φ139.8×4.5', dims:'D=139.8 t=4.5',  uw:15.0},
+    {name:'SGP 150A φ165.2×5.0', dims:'D=165.2 t=5.0',  uw:19.8},
+    {name:'SGP 175A φ190.7×5.3', dims:'D=190.7 t=5.3',  uw:24.2},
+    {name:'SGP 200A φ216.3×5.8', dims:'D=216.3 t=5.8',  uw:30.1},
+    {name:'SGP 225A φ241.8×6.2', dims:'D=241.8 t=6.2',  uw:36.0},
+    {name:'SGP 250A φ267.4×6.6', dims:'D=267.4 t=6.6',  uw:42.4},
+    {name:'SGP 300A φ318.5×6.9', dims:'D=318.5 t=6.9',  uw:53.0},
+  ]},
+  // 丸鋼管 STK (keihankouzai.co.jp より)
+  STK:{label:'丸鋼管 STK（一般構造用鋼管）',data:[
+    {name:'STK φ21.7×1.9',   dims:'D=21.7  t=1.9',  uw:0.928},
+    {name:'STK φ27.2×1.9',   dims:'D=27.2  t=1.9',  uw:1.19},
+    {name:'STK φ27.2×2.3',   dims:'D=27.2  t=2.3',  uw:2.30},
+    {name:'STK φ34.0×2.3',   dims:'D=34.0  t=2.3',  uw:1.80},
+    {name:'STK φ34.0×3.2',   dims:'D=34.0  t=3.2',  uw:2.43},
+    {name:'STK φ42.7×2.3',   dims:'D=42.7  t=2.3',  uw:2.29},
+    {name:'STK φ42.7×3.2',   dims:'D=42.7  t=3.2',  uw:3.12},
+    {name:'STK φ48.6×2.3',   dims:'D=48.6  t=2.3',  uw:2.63},
+    {name:'STK φ48.6×3.2',   dims:'D=48.6  t=3.2',  uw:3.58},
+    {name:'STK φ60.5×2.3',   dims:'D=60.5  t=2.3',  uw:3.30},
+    {name:'STK φ60.5×3.2',   dims:'D=60.5  t=3.2',  uw:4.52},
+    {name:'STK φ60.5×4.9',   dims:'D=60.5  t=4.9',  uw:6.72},
+    {name:'STK φ76.3×2.8',   dims:'D=76.3  t=2.8',  uw:5.08},
+    {name:'STK φ76.3×3.2',   dims:'D=76.3  t=3.2',  uw:5.77},
+    {name:'STK φ76.3×4.2',   dims:'D=76.3  t=4.2',  uw:7.50},
+    {name:'STK φ89.1×2.8',   dims:'D=89.1  t=2.8',  uw:5.96},
+    {name:'STK φ89.1×3.2',   dims:'D=89.1  t=3.2',  uw:6.78},
+    {name:'STK φ89.1×4.2',   dims:'D=89.1  t=4.2',  uw:8.79},
+    {name:'STK φ101.6×3.2',  dims:'D=101.6 t=3.2',  uw:7.76},
+    {name:'STK φ101.6×4.2',  dims:'D=101.6 t=4.2',  uw:10.1},
+    {name:'STK φ101.6×5.7',  dims:'D=101.6 t=5.7',  uw:13.5},
+    {name:'STK φ114.3×3.5',  dims:'D=114.3 t=3.5',  uw:9.56},
+    {name:'STK φ114.3×4.5',  dims:'D=114.3 t=4.5',  uw:12.2},
+    {name:'STK φ114.3×6.0',  dims:'D=114.3 t=6.0',  uw:16.0},
+  ]},
+  SQBAR:{label:'角棒',data:[
+    {name:'■9.52',  dims:'□=9.52',  uw:0.711},
+    {name:'■13',    dims:'□=13',    uw:1.33},
+    {name:'■16',    dims:'□=16',    uw:2.01},
+    {name:'■19',    dims:'□=19',    uw:2.83},
+    {name:'■22',    dims:'□=22',    uw:3.80},
+    {name:'■25',    dims:'□=25',    uw:4.91},
+    {name:'■28',    dims:'□=28',    uw:6.15},
+    {name:'■32',    dims:'□=32',    uw:8.04},
+    {name:'■38',    dims:'□=38',    uw:11.3},
+  ]},
+  BAR:{label:'丸棒',data:[
+    {name:'φ9',   dims:'D=9',   uw:0.499},
+    {name:'φ10',  dims:'D=10',  uw:0.617},
+    {name:'φ12',  dims:'D=12',  uw:0.888},
+    {name:'φ13',  dims:'D=13',  uw:1.04},
+    {name:'φ16',  dims:'D=16',  uw:1.58},
+    {name:'φ19',  dims:'D=19',  uw:2.23},
+    {name:'φ22',  dims:'D=22',  uw:2.98},
+    {name:'φ25',  dims:'D=25',  uw:3.85},
+    {name:'φ28',  dims:'D=28',  uw:4.83},
+    {name:'φ32',  dims:'D=32',  uw:6.31},
+    {name:'φ38',  dims:'D=38',  uw:8.90},
+    {name:'φ44',  dims:'D=44',  uw:11.9},
+    {name:'φ50',  dims:'D=50',  uw:15.4},
+    {name:'φ60',  dims:'D=60',  uw:22.2},
+    {name:'φ75',  dims:'D=75',  uw:34.7},
+    {name:'φ100', dims:'D=100', uw:61.7},
+  ]},
+
+  MANUAL:{label:'手動入力',data:[]},
+};
+
+// ===== 以下ステンレス・アルミは後日追加予定 =====
+const DB_PLACEHOLDER = {
+  SUS304_PL:{label:'ステンレス（SUS304） 平板',data:[
+    {name:'SUS-PL 1.0×50',  dims:'t=1.0  B=50',  uw:0.397},
+    {name:'SUS-PL 1.5×50',  dims:'t=1.5  B=50',  uw:0.595},
+    {name:'SUS-PL 2.0×50',  dims:'t=2.0  B=50',  uw:0.793},
+    {name:'SUS-PL 2.0×100', dims:'t=2.0  B=100', uw:1.59},
+    {name:'SUS-PL 3.0×50',  dims:'t=3.0  B=50',  uw:1.19},
+    {name:'SUS-PL 3.0×75',  dims:'t=3.0  B=75',  uw:1.78},
+    {name:'SUS-PL 3.0×100', dims:'t=3.0  B=100', uw:2.38},
+    {name:'SUS-PL 4.0×50',  dims:'t=4.0  B=50',  uw:1.59},
+    {name:'SUS-PL 4.0×100', dims:'t=4.0  B=100', uw:3.17},
+    {name:'SUS-PL 4.0×150', dims:'t=4.0  B=150', uw:4.76},
+    {name:'SUS-PL 5.0×100', dims:'t=5.0  B=100', uw:3.97},
+    {name:'SUS-PL 5.0×150', dims:'t=5.0  B=150', uw:5.95},
+    {name:'SUS-PL 6.0×100', dims:'t=6.0  B=100', uw:4.76},
+    {name:'SUS-PL 6.0×150', dims:'t=6.0  B=150', uw:7.14},
+    {name:'SUS-PL 6.0×200', dims:'t=6.0  B=200', uw:9.52},
+    {name:'SUS-PL 6.0×300', dims:'t=6.0  B=300', uw:14.3},
+    {name:'SUS-PL 8.0×200', dims:'t=8.0  B=200', uw:12.7},
+    {name:'SUS-PL 9.0×200', dims:'t=9.0  B=200', uw:14.3},
+    {name:'SUS-PL 9.0×300', dims:'t=9.0  B=300', uw:21.4},
+    {name:'SUS-PL 12×200',  dims:'t=12   B=200', uw:19.0},
+    {name:'SUS-PL 12×300',  dims:'t=12   B=300', uw:28.5},
+    {name:'SUS-PL 16×200',  dims:'t=16   B=200', uw:25.4},
+    {name:'SUS-PL 19×200',  dims:'t=19   B=200', uw:30.1},
+  ]},
+  SUS304_L:{label:'ステンレス（SUS304） 等辺アングル',data:[
+    {name:'SUS-L 20×20×3',   dims:'A=20  t=3',  uw:0.882},
+    {name:'SUS-L 25×25×3',   dims:'A=25  t=3',  uw:1.12},
+    {name:'SUS-L 30×30×3',   dims:'A=30  t=3',  uw:1.36},
+    {name:'SUS-L 30×30×4',   dims:'A=30  t=4',  uw:1.78},
+    {name:'SUS-L 40×40×3',   dims:'A=40  t=3',  uw:1.84},
+    {name:'SUS-L 40×40×4',   dims:'A=40  t=4',  uw:2.42},
+    {name:'SUS-L 40×40×5',   dims:'A=40  t=5',  uw:2.98},
+    {name:'SUS-L 50×50×4',   dims:'A=50  t=4',  uw:3.06},
+    {name:'SUS-L 50×50×5',   dims:'A=50  t=5',  uw:3.78},
+    {name:'SUS-L 50×50×6',   dims:'A=50  t=6',  uw:4.48},
+    {name:'SUS-L 60×60×5',   dims:'A=60  t=5',  uw:4.59},
+    {name:'SUS-L 60×60×6',   dims:'A=60  t=6',  uw:5.45},
+    {name:'SUS-L 65×65×6',   dims:'A=65  t=6',  uw:5.93},
+    {name:'SUS-L 75×75×6',   dims:'A=75  t=6',  uw:6.88},
+    {name:'SUS-L 75×75×9',   dims:'A=75  t=9',  uw:10.1},
+    {name:'SUS-L 90×90×7',   dims:'A=90  t=7',  uw:9.64},
+    {name:'SUS-L 100×100×7', dims:'A=100 t=7',  uw:10.8},
+    {name:'SUS-L 100×100×10',dims:'A=100 t=10', uw:15.2},
+    {name:'SUS-L 120×120×10',dims:'A=120 t=10', uw:18.5},
+    {name:'SUS-L 150×150×12',dims:'A=150 t=12', uw:27.4},
+  ]},
+  SUS304_SQ:{label:'ステンレス（SUS304） 角管',data:[
+    {name:'SUS-□ 20×20×1.5',  dims:'D=20  t=1.5', uw:0.855},
+    {name:'SUS-□ 25×25×1.5',  dims:'D=25  t=1.5', uw:1.09},
+    {name:'SUS-□ 30×30×2.0',  dims:'D=30  t=2.0', uw:1.73},
+    {name:'SUS-□ 40×40×2.0',  dims:'D=40  t=2.0', uw:2.34},
+    {name:'SUS-□ 40×40×3.0',  dims:'D=40  t=3.0', uw:3.39},
+    {name:'SUS-□ 50×50×2.0',  dims:'D=50  t=2.0', uw:2.96},
+    {name:'SUS-□ 50×50×3.0',  dims:'D=50  t=3.0', uw:4.32},
+    {name:'SUS-□ 60×60×2.0',  dims:'D=60  t=2.0', uw:3.57},
+    {name:'SUS-□ 60×60×3.0',  dims:'D=60  t=3.0', uw:5.26},
+    {name:'SUS-□ 75×75×3.0',  dims:'D=75  t=3.0', uw:6.64},
+    {name:'SUS-□ 100×100×3.0',dims:'D=100 t=3.0', uw:8.98},
+    {name:'SUS-□ 100×100×4.0',dims:'D=100 t=4.0', uw:11.8},
+    {name:'SUS-□ 100×100×5.0',dims:'D=100 t=5.0', uw:14.6},
+    {name:'SUS-□ 125×125×4.0',dims:'D=125 t=4.0', uw:14.9},
+    {name:'SUS-□ 150×150×4.0',dims:'D=150 t=4.0', uw:18.0},
+    {name:'SUS-□ 150×150×5.0',dims:'D=150 t=5.0', uw:22.3},
+    {name:'SUS-□ 200×200×5.0',dims:'D=200 t=5.0', uw:30.1},
+    {name:'SUS-□ 200×200×6.0',dims:'D=200 t=6.0', uw:35.9},
+  ]},
+  SUS304_PIPE:{label:'ステンレス（SUS304） 円管・パイプ',data:[
+    {name:'SUS-φ 21.7×1.5',  dims:'D=21.7  t=1.5', uw:0.748},
+    {name:'SUS-φ 27.2×1.5',  dims:'D=27.2  t=1.5', uw:0.948},
+    {name:'SUS-φ 34.0×1.5',  dims:'D=34.0  t=1.5', uw:1.19},
+    {name:'SUS-φ 42.7×2.0',  dims:'D=42.7  t=2.0', uw:2.01},
+    {name:'SUS-φ 48.6×2.0',  dims:'D=48.6  t=2.0', uw:2.30},
+    {name:'SUS-φ 60.5×2.0',  dims:'D=60.5  t=2.0', uw:2.89},
+    {name:'SUS-φ 60.5×3.0',  dims:'D=60.5  t=3.0', uw:4.24},
+    {name:'SUS-φ 76.3×2.0',  dims:'D=76.3  t=2.0', uw:3.67},
+    {name:'SUS-φ 76.3×3.0',  dims:'D=76.3  t=3.0', uw:5.41},
+    {name:'SUS-φ 89.1×3.0',  dims:'D=89.1  t=3.0', uw:6.34},
+    {name:'SUS-φ 101.6×3.0', dims:'D=101.6 t=3.0', uw:7.25},
+    {name:'SUS-φ 114.3×3.0', dims:'D=114.3 t=3.0', uw:8.17},
+    {name:'SUS-φ 114.3×4.0', dims:'D=114.3 t=4.0', uw:10.8},
+    {name:'SUS-φ 139.8×3.0', dims:'D=139.8 t=3.0', uw:10.0},
+    {name:'SUS-φ 139.8×4.0', dims:'D=139.8 t=4.0', uw:13.3},
+    {name:'SUS-φ 165.2×4.0', dims:'D=165.2 t=4.0', uw:15.8},
+    {name:'SUS-φ 190.7×5.0', dims:'D=190.7 t=5.0', uw:22.7},
+    {name:'SUS-φ 216.3×5.0', dims:'D=216.3 t=5.0', uw:25.9},
+    {name:'SUS-φ 267.4×6.0', dims:'D=267.4 t=6.0', uw:38.3},
+    {name:'SUS-φ 318.5×6.0', dims:'D=318.5 t=6.0', uw:45.8},
+    {name:'SUS-φ 355.6×6.0', dims:'D=355.6 t=6.0', uw:51.2},
+  ]},
+
+  // ===== アルミ =====
+  AL_PL:{label:'アルミ 平板',data:[
+    {name:'AL-PL 2.0×30',  dims:'t=2.0  B=30',  uw:0.162},
+    {name:'AL-PL 2.0×50',  dims:'t=2.0  B=50',  uw:0.270},
+    {name:'AL-PL 3.0×50',  dims:'t=3.0  B=50',  uw:0.405},
+    {name:'AL-PL 3.0×75',  dims:'t=3.0  B=75',  uw:0.608},
+    {name:'AL-PL 3.0×100', dims:'t=3.0  B=100', uw:0.810},
+    {name:'AL-PL 4.0×50',  dims:'t=4.0  B=50',  uw:0.540},
+    {name:'AL-PL 4.0×75',  dims:'t=4.0  B=75',  uw:0.810},
+    {name:'AL-PL 4.0×100', dims:'t=4.0  B=100', uw:1.08},
+    {name:'AL-PL 4.0×150', dims:'t=4.0  B=150', uw:1.62},
+    {name:'AL-PL 5.0×100', dims:'t=5.0  B=100', uw:1.35},
+    {name:'AL-PL 5.0×150', dims:'t=5.0  B=150', uw:2.03},
+    {name:'AL-PL 5.0×200', dims:'t=5.0  B=200', uw:2.70},
+    {name:'AL-PL 6.0×100', dims:'t=6.0  B=100', uw:1.62},
+    {name:'AL-PL 6.0×150', dims:'t=6.0  B=150', uw:2.43},
+    {name:'AL-PL 6.0×200', dims:'t=6.0  B=200', uw:3.24},
+    {name:'AL-PL 6.0×300', dims:'t=6.0  B=300', uw:4.86},
+    {name:'AL-PL 8.0×200', dims:'t=8.0  B=200', uw:4.32},
+    {name:'AL-PL 10×200',  dims:'t=10   B=200', uw:5.40},
+    {name:'AL-PL 12×200',  dims:'t=12   B=200', uw:6.48},
+  ]},
+  AL_L:{label:'アルミ 等辺アングル',data:[
+    {name:'AL-L 15×15×2',    dims:'A=15  t=2',  uw:0.144},
+    {name:'AL-L 20×20×2',    dims:'A=20  t=2',  uw:0.196},
+    {name:'AL-L 25×25×2',    dims:'A=25  t=2',  uw:0.247},
+    {name:'AL-L 25×25×3',    dims:'A=25  t=3',  uw:0.361},
+    {name:'AL-L 30×30×2',    dims:'A=30  t=2',  uw:0.299},
+    {name:'AL-L 30×30×3',    dims:'A=30  t=3',  uw:0.440},
+    {name:'AL-L 40×40×3',    dims:'A=40  t=3',  uw:0.591},
+    {name:'AL-L 40×40×4',    dims:'A=40  t=4',  uw:0.778},
+    {name:'AL-L 50×50×4',    dims:'A=50  t=4',  uw:0.981},
+    {name:'AL-L 50×50×5',    dims:'A=50  t=5',  uw:1.21},
+    {name:'AL-L 60×60×5',    dims:'A=60  t=5',  uw:1.47},
+    {name:'AL-L 60×60×6',    dims:'A=60  t=6',  uw:1.74},
+    {name:'AL-L 75×75×6',    dims:'A=75  t=6',  uw:2.21},
+    {name:'AL-L 75×75×8',    dims:'A=75  t=8',  uw:2.90},
+    {name:'AL-L 100×100×6',  dims:'A=100 t=6',  uw:2.97},
+    {name:'AL-L 100×100×8',  dims:'A=100 t=8',  uw:3.92},
+    {name:'AL-L 100×100×10', dims:'A=100 t=10', uw:4.84},
+    {name:'AL-L 120×120×8',  dims:'A=120 t=8',  uw:4.74},
+    {name:'AL-L 150×150×10', dims:'A=150 t=10', uw:7.41},
+  ]},
+  AL_SQ:{label:'アルミ 角管',data:[
+    {name:'AL-□ 20×20×1.5',   dims:'D=20  t=1.5', uw:0.291},
+    {name:'AL-□ 25×25×1.5',   dims:'D=25  t=1.5', uw:0.370},
+    {name:'AL-□ 30×30×2.0',   dims:'D=30  t=2.0', uw:0.562},
+    {name:'AL-□ 40×40×2.0',   dims:'D=40  t=2.0', uw:0.762},
+    {name:'AL-□ 40×40×3.0',   dims:'D=40  t=3.0', uw:1.11},
+    {name:'AL-□ 50×50×2.0',   dims:'D=50  t=2.0', uw:0.962},
+    {name:'AL-□ 50×50×3.0',   dims:'D=50  t=3.0', uw:1.41},
+    {name:'AL-□ 60×60×2.5',   dims:'D=60  t=2.5', uw:1.44},
+    {name:'AL-□ 60×60×3.0',   dims:'D=60  t=3.0', uw:1.71},
+    {name:'AL-□ 75×75×3.0',   dims:'D=75  t=3.0', uw:2.17},
+    {name:'AL-□ 100×100×3.0', dims:'D=100 t=3.0', uw:2.92},
+    {name:'AL-□ 100×100×4.0', dims:'D=100 t=4.0', uw:3.85},
+    {name:'AL-□ 125×125×4.0', dims:'D=125 t=4.0', uw:4.85},
+    {name:'AL-□ 150×150×4.0', dims:'D=150 t=4.0', uw:5.85},
+    {name:'AL-□ 150×150×5.0', dims:'D=150 t=5.0', uw:7.27},
+    {name:'AL-□ 200×200×5.0', dims:'D=200 t=5.0', uw:9.77},
+  ]},
+  AL_PIPE:{label:'アルミ 円管',data:[
+    {name:'AL-φ 20×1.5',  dims:'D=20  t=1.5', uw:0.218},
+    {name:'AL-φ 25×1.5',  dims:'D=25  t=1.5', uw:0.275},
+    {name:'AL-φ 30×2.0',  dims:'D=30  t=2.0', uw:0.421},
+    {name:'AL-φ 40×2.0',  dims:'D=40  t=2.0', uw:0.567},
+    {name:'AL-φ 50×2.0',  dims:'D=50  t=2.0', uw:0.714},
+    {name:'AL-φ 50×3.0',  dims:'D=50  t=3.0', uw:1.04},
+    {name:'AL-φ 60×2.5',  dims:'D=60  t=2.5', uw:1.07},
+    {name:'AL-φ 76×2.5',  dims:'D=76  t=2.5', uw:1.37},
+    {name:'AL-φ 76×3.0',  dims:'D=76  t=3.0', uw:1.63},
+    {name:'AL-φ 89×3.0',  dims:'D=89  t=3.0', uw:1.92},
+    {name:'AL-φ 101×3.0', dims:'D=101 t=3.0', uw:2.18},
+    {name:'AL-φ 114×3.0', dims:'D=114 t=3.0', uw:2.47},
+    {name:'AL-φ 140×4.0', dims:'D=140 t=4.0', uw:3.99},
+    {name:'AL-φ 165×4.0', dims:'D=165 t=4.0', uw:4.73},
+    {name:'AL-φ 190×5.0', dims:'D=190 t=5.0', uw:6.77},
+    {name:'AL-φ 216×5.0', dims:'D=216 t=5.0', uw:7.72},
+    {name:'AL-φ 267×6.0', dims:'D=267 t=6.0', uw:11.4},
+  ]},
+};
+
+// ===== 素材別カテゴリマップ =====
+const MATERIAL_CATEGORIES = {
+  steel: [
+    {value:'PL', text:'平鋼（FB）'},
+    {value:'L',  text:'等辺山形鋼（L形鋼）'},
+    {value:'L2', text:'不等辺山形鋼'},
+    {value:'C',  text:'溝形鋼（[-形鋼）'},
+    {value:'LC', text:'リップ溝形鋼（C形鋼）'},
+    {value:'SGP',  text:'丸鋼管 SGP（配管用炭素鋼鋼管）'},
+    {value:'STK',  text:'丸鋼管 STK（一般構造用鋼管）'},
+    {value:'BAR',  text:'丸棒'},
+    {value:'STKMR_SQ',  text:'角鋼管 STKMR（小角径鋼管・正方形）'},
+    {value:'STKMR_REC', text:'角鋼管 STKMR（小角径鋼管・長方形）'},
+    {value:'STKR_SQ',   text:'角鋼管 STKR（角径鋼管・正方形）'},
+    {value:'STKR_REC',  text:'角鋼管 STKR（角径鋼管・長方形）'},
+    {value:'SQBAR', text:'角棒'},
+    {value:'HW', text:'H形鋼（広幅）'},
+    {value:'HM', text:'H形鋼（中幅）'},
+    {value:'HN', text:'H形鋼（細幅）'},
+  ],
+  stainless: [
+    {value:'__wip__', text:'━━ 工事中 ━━'},
+  ],
+  aluminum: [
+    {value:'__wip__', text:'━━ 工事中 ━━'},
+  ],
+};
+
+let items=[], counter=1, currentUW=0, currentSpec='', currentDims='';
+let currentMode = 'spec';
+
+function switchMode(mode){
+  currentMode = mode;
+  document.getElementById('mode-spec').style.display = mode==='spec' ? '' : 'none';
+  document.getElementById('mode-other').style.display = mode==='other' ? '' : 'none';
+  document.getElementById('tab-spec').classList.toggle('active', mode==='spec');
+  document.getElementById('tab-other').classList.toggle('active', mode==='other');
+  if(mode==='spec') onCategoryChange();
+  else onOtherChange();
+}
+
+function onMaterialChange(){
+  const mat = document.getElementById('selMaterial').value;
+  const cats = MATERIAL_CATEGORIES[mat];
+  const sel = document.getElementById('selCategory');
+  sel.innerHTML = cats.map(c=>`<option value="${c.value}">${c.text}</option>`).join('');
+  onCategoryChange();
+}
+
+function onCategoryChange(){
+  const cat=document.getElementById('selCategory').value;
+  const ss=document.getElementById('selSpec');
+  const sc=document.getElementById('specCard');
+
+  if(cat==='__wip__'){
+    ss.style.display='none';
+    sc.style.display='';
+    sc.innerHTML=`<div style="color:var(--text2);font-size:13px;padding:4px 0;">このカテゴリは現在工事中です</div>`;
+    currentUW=0; currentSpec=''; currentDims='';
+    document.getElementById('uwEditVal').value='';
+    return;
+  }
+
+  if(cat==='MANUAL'){
+    ss.style.display='none';
+    sc.style.display='none';
+    currentUW=0; currentSpec='その他'; currentDims='';
+    document.getElementById('uwEditVal').value='';
+    return;
+  }
+
+  ss.style.display='';
+  if(cat==='PL'){
+    // 平鋼はtごとにoptgroupでグループ化
+    const groups=[];
+    const groupMap={};
+    DB[cat].data.forEach((d,i)=>{
+      const m=d.name.match(/FB-([\d.]+)[×x]/);
+      const t=m?m[1]:'他';
+      if(!groupMap[t]){groupMap[t]=[];groups.push(t);}
+      groupMap[t].push({d,i});
+    });
+    ss.innerHTML=groups.map(t=>
+      `<optgroup label="── 平鋼 ${t}mm ──">` +
+      groupMap[t].map(({d,i})=>`<option value="${i}">${d.name}</option>`).join('') +
+      `</optgroup>`
+    ).join('');
+  } else {
+    ss.innerHTML=DB[cat].data.map((d,i)=>`<option value="${i}">${d.name}</option>`).join('');
+  }
+  onSpecChange();
+}
+
+function onSpecChange(){
+  const cat=document.getElementById('selCategory').value;
+  const idx=parseInt(document.getElementById('selSpec').value);
+  const it=DB[cat].data[idx]; if(!it) return;
+  currentUW=it.uw; currentSpec=it.name; currentDims=it.dims||'';
+  const sc=document.getElementById('specCard');
+  sc.style.display='';
+  sc.innerHTML=`<div class="sname">${it.name}</div><div class="suw">${it.uw.toFixed(3)} <span>kg/m</span></div>`;
+  updatePreview();
+}
+
+function onOtherChange(){
+  currentUW=parseFloat(document.getElementById('otherUW').value)||0;
+  currentSpec=document.getElementById('otherName').value.trim()||'その他';
+  currentDims='';
+  updatePreview();
+}
+
+function updatePreview(){
+  const lenMm = parseFloat(document.getElementById('inLength').value)||0;
+  const qty = parseInt(document.getElementById('inQty').value)||1;
+  const el = document.getElementById('specPreviewVal');
+  const unit = document.getElementById('specPreviewUnit');
+  if(currentUW>0 && lenMm>0){
+    el.textContent = (currentUW*(lenMm/1000)*qty).toFixed(2);
+    unit.textContent = ' kg';
+  } else {
+    el.textContent = '—';
+    unit.textContent = ' kg';
+  }
+}
+
+function addItem(){
+  if(currentUW<=0){alert('鋼材を選択するか単位重量を入力してください。');return;}
+  const part=document.getElementById('inPart').value.trim();
+  const lengthMm=parseFloat(document.getElementById('inLength').value);
+  const qty=parseInt(document.getElementById('inQty').value)||1;
+  const note=document.getElementById('inNote').value.trim();
+  if(isNaN(lengthMm)||lengthMm<=0){alert('長さを入力してください。');return;}
+  const lengthM=lengthMm/1000;
+  const isManual=(currentMode==='other');
+  items.push({no:counter++,spec:currentSpec,dims:currentDims,unitWeight:currentUW,part,lengthMm,lengthM,qty,weight:currentUW*lengthM*qty,note,isManual});
+  renderTable();
+  document.getElementById('inLength').value='';
+  document.getElementById('inQty').value='1';
+  document.getElementById('inNote').value='';
+}
+
+function deleteItem(no){items=items.filter(i=>i.no!==no);renderTable();}
+function copyItem(no){
+  const src=items.find(i=>i.no===no); if(!src) return;
+  const idx=items.findIndex(i=>i.no===no);
+  items.splice(idx+1,0,{...src,no:counter++});
+  renderTable();
+}
+function moveItem(no,dir){
+  const idx=items.findIndex(i=>i.no===no),si=idx+dir;
+  if(si<0||si>=items.length) return;
+  [items[idx],items[si]]=[items[si],items[idx]];
+  renderTable();
+}
+function updateField(no,field,value){
+  const it=items.find(i=>i.no===no); if(!it) return;
+  if(field==='lengthMm'){
+    const v=parseFloat(value); if(!isNaN(v)&&v>0){it.lengthMm=v;it.lengthM=v/1000;}
+  } else if(field==='qty'||field==='unitWeight'){
+    const v=parseFloat(value); if(!isNaN(v)&&v>0)it[field]=v;
+  } else {
+    it[field]=value;
+  }
+  it.weight=it.unitWeight*it.lengthM*it.qty;
+  const wc=document.getElementById('wt_'+no); if(wc) wc.textContent=it.weight.toFixed(2);
+  updateTotal();
+}
+function updateTotal(){const el=document.getElementById('totalWeight');if(el)el.textContent=items.reduce((s,i)=>s+i.weight,0).toFixed(2);}
+function clearAll(){if(!items.length)return;if(!confirm('リストを全削除しますか？'))return;items=[];counter=1;renderTable();}
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function renderTable(){
+  const wrap=document.getElementById('tableWrap');
+  if(!items.length){
+    wrap.innerHTML=`<div class="empty-state"><div class="icon">📋</div><p>左パネルで鋼材を選択し「リストに追加」してください。</p></div>`;
+    return;
+  }
+  const total=items.reduce((s,i)=>s+i.weight,0);
+  wrap.innerHTML=`<div class="tbl-wrap"><table>
+  <thead><tr>
+    <th style="width:38px;">NO.</th>
+    <th>部位名称</th>
+    <th>規格・寸法</th>
+    <th class="num" style="width:90px;">長さ(mm)</th>
+    <th class="num" style="width:50px;">数量</th>
+    <th class="num" style="width:100px;">単重(kg/m)</th>
+    <th class="num" style="width:90px;">重量(kg)</th>
+    <th>備考</th>
+    <th style="width:116px;text-align:center;font-size:9px;">操作</th>
+  </tr></thead>
+  <tbody>
+  ${items.map((it,idx)=>`
+  <tr id="row_${it.no}">
+    <td style="color:var(--text2);font-size:12px;text-align:center;">${idx+1}</td>
+    <td><span class="editable" contenteditable="true"
+      onblur="updateField(${it.no},'part',this.textContent.trim())"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+    >${escHtml(it.part)}</span></td>
+    <td style="font-size:11px;">
+      ${it.isManual
+        ? `<span class="editable" contenteditable="true"
+            onblur="updateField(${it.no},'spec',this.textContent.trim())"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+            style="font-weight:500;">${escHtml(it.spec)}</span>`
+        : `<span style="font-weight:500;">${escHtml(it.spec)}</span>`
+      }
+    </td>
+    <td class="num"><span class="editable" contenteditable="true"
+      onblur="updateField(${it.no},'lengthMm',this.textContent.trim())"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+    >${it.lengthMm}</span></td>
+    <td class="num"><span class="editable" contenteditable="true"
+      onblur="updateField(${it.no},'qty',this.textContent.trim())"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+    >${it.qty}</span></td>
+    <td class="num">
+      ${it.isManual
+        ? `<span class="editable" contenteditable="true"
+            onblur="updateField(${it.no},'unitWeight',this.textContent.trim())"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+          >${it.unitWeight.toFixed(3)}</span>`
+        : `<span style="font-family:'DM Mono',monospace;">${it.unitWeight.toFixed(3)}</span>`
+      }
+    </td>
+    <td class="num"><span id="wt_${it.no}" class="wt-val">${it.weight.toFixed(2)}</span></td>
+    <td><span class="editable" contenteditable="true"
+      onblur="updateField(${it.no},'note',this.textContent.trim())"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+      style="font-size:12px;color:var(--text2);"
+    >${escHtml(it.note)}</span></td>
+    <td><div class="row-actions" style="opacity:1;justify-content:center;">
+      <button class="bic" title="上へ" onclick="moveItem(${it.no},-1)">↑</button>
+      <button class="bic" title="下へ" onclick="moveItem(${it.no},1)">↓</button>
+      <button class="bic cp" title="コピー追加" onclick="copyItem(${it.no})">⧉</button>
+      <button class="bic del" title="削除" onclick="deleteItem(${it.no})">✕</button>
+    </div></td>
+  </tr>`).join('')}
+  <tr class="total-row">
+    <td colspan="6" style="text-align:right;font-size:13px;color:var(--text2);letter-spacing:.08em;">総　重　量</td>
+    <td class="num"><span id="totalWeight" class="total-weight">${total.toFixed(2)}</span> <span style="font-size:11px;color:var(--text2);">kg</span></td>
+    <td colspan="2"></td>
+  </tr>
+  </tbody></table></div>`;
+}
+
+async function exportExcel(){
+  if(!items.length){alert('リストが空です。');return;}
+  const proj = document.getElementById('projectName').value || '工事名';
+  const prod = document.getElementById('productName').value || '';
+  const today = new Date();
+  const ds = `${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日`;
+  const total = items.reduce((s,i)=>s+i.weight, 0);
+
+  const wb = new ExcelJS.Workbook();
+
+  // ===== シート1: 重量一覧表 =====
+  const ws = wb.addWorksheet('重量一覧表');
+
+  // 列幅
+  ws.getColumn('A').width = 5.625;
+  ws.getColumn('B').width = 24.875;
+  ws.getColumn('C').width = 25.625;
+  ws.getColumn('D').width = 9.625;
+  ws.getColumn('E').width = 6.625;
+  ws.getColumn('F').width = 11.625;
+  ws.getColumn('G').width = 11.625;
+  ws.getColumn('H').width = 30.625;
+
+  // 全行の行高
+  const totalRows = 4 + items.length + 1;
+  for(let r = 1; r <= totalRows; r++){
+    ws.getRow(r).height = 20.1;
+  }
+
+  const font = { name:'ＭＳ Ｐゴシック', size:12 };
+
+  // 行1: タイトル（A1:C1結合）
+  ws.mergeCells('A1:C1');
+  const r1a = ws.getCell('A1');
+  r1a.value = `「${proj}」 重量一覧表`;
+  r1a.font = font;
+  r1a.alignment = { vertical:'center', horizontal:'left' };
+
+  // 行2: 製品名（A2:C2結合）・作成日（H2）
+  ws.mergeCells('A2:C2');
+  const r2a = ws.getCell('A2');
+  r2a.value = prod ? `製品名：${prod}` : '';
+  r2a.font = font;
+  r2a.alignment = { vertical:'center', horizontal:'left' };
+  const r2h = ws.getCell('H2');
+  r2h.value = `作成日：${ds}`;
+  r2h.font = font;
+  r2h.alignment = { vertical:'center', horizontal:'right' };
+
+  // 行3: 空白
+
+  // 行4: ヘッダー
+  const headers = ['NO.','部　位','規格・寸法','長さ(mm)','数量','単重(kg/m)','重量(kg)','備　考'];
+  const hRow = ws.getRow(4);
+  headers.forEach((h, i) => {
+    const cell = hRow.getCell(i+1);
+    cell.value = h;
+    cell.font = font;
+    cell.alignment = { vertical:'center', horizontal:'center' };
+    cell.border = {
+      top:    { style:'double' },
+      bottom: { style:'double' },
+      left:   { style: i===0 ? 'double' : 'thin' },
+      right:  { style: i===7 ? 'double' : 'thin' },
+    };
+  });
+
+  // データ行（最終行のbottomはdouble）
+  const lastDataRow = 4 + items.length;
+  items.forEach((it, idx) => {
+    const rn = 5 + idx;
+    const isLast = idx === items.length - 1;
+    const row = ws.getRow(rn);
+    row.height = 20.1;
+    const vals = [idx+1, it.part, it.spec, it.lengthMm, it.qty, it.unitWeight, null, it.note];
+    vals.forEach((v, i) => {
+      const cell = row.getCell(i+1);
+      cell.font = font;
+      if(i === 6){
+        // 重量 = 長さ(mm)/1000 * 数量 * 単重
+        cell.value = { formula: `D${rn}/1000*E${rn}*F${rn}` };
+        cell.numFmt = '0.00';
+      } else {
+        cell.value = v;
+      }
+      cell.alignment = { vertical:'center', horizontal: i===0||i===3||i===4||i===5||i===6 ? 'center' : 'left' };
+      cell.border = {
+        top:    idx > 0 ? { style:'thin' } : undefined,
+        bottom: { style: isLast ? 'double' : 'thin' },
+        left:   { style: i===0 ? 'double' : 'thin' },
+        right:  { style: i===7 ? 'double' : 'thin' },
+      };
+    });
+  });
+
+  // 総重量行（A〜E・Hはtop:doubleのみ、F・Gは四方に罫線）
+  const totalRowN = 5 + items.length;
+  const tRow = ws.getRow(totalRowN);
+  tRow.height = 20.1;
+  for(let i = 0; i < 8; i++){
+    const cell = tRow.getCell(i+1);
+    cell.font = font;
+    if(i === 5){
+      // F列：総重量ラベル
+      cell.value = '総重量';
+      cell.alignment = { vertical:'center', horizontal:'center' };
+      cell.border = { top:{style:'double'}, bottom:{style:'double'}, left:{style:'double'}, right:{style:'thin'} };
+    } else if(i === 6){
+      // G列：総重量値
+      cell.value = { formula: `SUM(G5:G${totalRowN-1})` };
+      cell.numFmt = '0.00';
+      cell.alignment = { vertical:'center', horizontal:'center' };
+      cell.border = { top:{style:'double'}, bottom:{style:'double'}, left:{style:'thin'}, right:{style:'double'} };
+    } else {
+      // A〜E・H列：上罫線のみ
+      cell.border = { top:{style:'double'} };
+      cell.alignment = { vertical:'center' };
+    }
+  }
+
+  // ===== シート2: 単位重量一覧 =====
+  const ws2 = wb.addWorksheet('単位重量一覧');
+  ws2.getColumn('A').width = 36;
+  ws2.getColumn('B').width = 16;
+  ws2.getColumn('C').width = 24;
+  ['規格名','単位重量(kg/m)','部位'].forEach((h,i) => {
+    const cell = ws2.getRow(1).getCell(i+1);
+    cell.value = h;
+    cell.font = font;
+  });
+  items.forEach((it, idx) => {
+    const row = ws2.getRow(idx+2);
+    row.getCell(1).value = it.spec;
+    row.getCell(2).value = it.unitWeight;
+    row.getCell(3).value = it.part;
+    [1,2,3].forEach(i => { row.getCell(i).font = font; });
+  });
+
+  // ダウンロード
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${proj}${prod?'_'+prod:''}_重量計算.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// 初期化
+onMaterialChange();
+</script>
+</body>
+</html>
